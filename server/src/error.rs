@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json
 };
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -21,22 +21,20 @@ impl fmt::Display for ErrorResponse {
 #[derive(Debug, PartialEq)]
 pub enum ErrorMessage {
     EmptyPassword,
+    UserNameExist,
     ExceededMaxPasswordLength(usize),
-    InvalidHashFormat,
-    HashingError,
-    InvalidToken,
     ServerError,
     WrongCredentials,
-    EmailExist,
     UserNoLongerExist,
-    TokenNotProvided,
     PermissionDenied,
     UserNotAuthenticated,
+    TokenNotProvided,
+    InvalidToken,
 }
 
-impl ToString for ErrorMessage {
-    fn to_string(&self) -> String {
-        self.to_str().to_owned()
+impl fmt::Display for ErrorMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_str().to_owned())
     }
 }
 
@@ -44,22 +42,28 @@ impl ErrorMessage {
     fn to_str(&self) -> String {
         match self {
             ErrorMessage::ServerError => "Server Error. Please try again later".to_string(),
-            ErrorMessage::WrongCredentials => "Email or password is wrong".to_string(),
-            ErrorMessage::EmailExist => "A user with this email already exists".to_string(),
-            ErrorMessage::UserNoLongerExist => "User belonging to this token no longer exists".to_string(),
+            ErrorMessage::WrongCredentials => "User id or password is wrong".to_string(),
+            ErrorMessage::TokenNotProvided => "Token not provided".to_string(),
+            ErrorMessage::InvalidToken => "Invalid token".to_string(),
+            ErrorMessage::UserNoLongerExist => {
+                "User belonging to this token no longer exists".to_string()
+            }
             ErrorMessage::EmptyPassword => "Password cannot be empty".to_string(),
-            ErrorMessage::HashingError => "Error while hashing password".to_string(),
-            ErrorMessage::InvalidHashFormat => "Invalid password hash format".to_string(),
-            ErrorMessage::ExceededMaxPasswordLength(max_length) => format!("Password must not be more than {} characters", max_length),
-            ErrorMessage::InvalidToken => "Authentication token is invalid or expired".to_string(),
-            ErrorMessage::TokenNotProvided => "You are not logged in, please provide a token".to_string(),
-            ErrorMessage::PermissionDenied => "You are not allowed to perform this action".to_string(),
-            ErrorMessage::UserNotAuthenticated => "Authentication required. Please log in.".to_string(),
+            ErrorMessage::UserNameExist => "Username already exists".to_string(),
+            ErrorMessage::ExceededMaxPasswordLength(max_length) => {
+                format!("Password must not be more than {} characters", max_length)
+            }
+            ErrorMessage::PermissionDenied => {
+                "You are not allowed to perform this action".to_string()
+            }
+            ErrorMessage::UserNotAuthenticated => {
+                "User not authenticated. Please try again later".to_string()
+            }
         }
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct HttpError {
     pub message: String,
     pub status: StatusCode,
@@ -88,9 +92,9 @@ impl HttpError {
     }
 
     pub fn unique_constraint_violation(message: impl Into<String>) -> Self {
-        HttpError { 
-            message: message.into(), 
-            status: StatusCode::CONFLICT 
+        HttpError {
+            message: message.into(),
+            status: StatusCode::CONFLICT,
         }
     }
 

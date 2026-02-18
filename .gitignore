@@ -2,3 +2,4 @@
 .env
 Session.vim
 cargo.txt
+tmp/
