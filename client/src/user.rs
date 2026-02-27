@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct LoginInfo {
     username: String,
     password: String,
