@@ -12,8 +12,8 @@ const MAX_PASSWORD_LENGTH: usize = 255;
 pub fn sha256_hash(input: impl Into<String>) -> Result<String, ErrorMessage> {
     let mut hasher = Sha256::new();
     hasher.update(input.into());
-    let username_hash = hasher.finalize();
-    String::from_utf8(format!("{:x}", username_hash).into()).map_err(|_| ErrorMessage::HashingError)
+    let input_hash = hasher.finalize();
+    String::from_utf8(format!("{:x}", input_hash).into()).map_err(|_| ErrorMessage::HashingError)
 }
 
 pub fn argon2id_hash(input: &[u8], salt: impl Into<String>) -> Result<String, ErrorMessage> {
@@ -40,9 +40,9 @@ pub fn password_hash(user: LoginInfo) -> Result<String, ErrorMessage> {
         return Err(ErrorMessage::EmptyPassword);
     }
 
-    let username_hash = sha256_hash(user.username())?;
-    let hashed_password = argon2id_hash(password.as_bytes(), username_hash)
-        .map_err(|_| ErrorMessage::HashingError)?;
+    let salt = sha256_hash(user.username())?;
+    let hashed_password =
+        argon2id_hash(password.as_bytes(), salt).map_err(|_| ErrorMessage::HashingError)?;
 
     if hashed_password.len() > MAX_PASSWORD_LENGTH {
         return Err(ErrorMessage::ExceededMaxPasswordLength(MAX_PASSWORD_LENGTH));
