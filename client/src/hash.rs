@@ -5,6 +5,7 @@ use argon2::{
 use sha2::{Digest, Sha256};
 
 use crate::error::ErrorMessage;
+use crate::user::LoginInfo;
 
 const MAX_PASSWORD_LENGTH: usize = 255;
 
@@ -32,17 +33,14 @@ pub fn argon2id_hash(input: &[u8], salt: impl Into<String>) -> Result<String, Er
 
 /// hash password with argon2d (default params)
 /// username (sha256) used as salt
-pub fn password_hash(
-    password: impl Into<String>,
-    username: impl Into<String>,
-) -> Result<String, ErrorMessage> {
-    let password = password.into();
+pub fn password_hash(user: LoginInfo) -> Result<String, ErrorMessage> {
+    let password = user.password();
 
     if password.is_empty() {
         return Err(ErrorMessage::EmptyPassword);
     }
 
-    let username_hash = sha256_hash(username)?;
+    let username_hash = sha256_hash(user.username())?;
     let hashed_password = argon2id_hash(password.as_bytes(), username_hash)
         .map_err(|_| ErrorMessage::HashingError)?;
 
@@ -57,10 +55,14 @@ pub fn password_hash(
 mod tests {
     use super::*;
 
+    fn test_user() -> LoginInfo {
+        LoginInfo::new("username", "password", None)
+    }
+
     #[test]
     fn test_sha256() {
-        let username = "username";
-        let hash_str = sha256_hash(username).unwrap();
+        let user = test_user();
+        let hash_str = sha256_hash(user.username()).unwrap();
         assert_eq!(
             hash_str,
             "16f78a7d6317f102bbd95fc9a4f3ff2e3249287690b8bdad6b7810f82b34ace3"
@@ -69,9 +71,8 @@ mod tests {
 
     #[test]
     fn test_hash() {
-        let username = "username";
-        let password = "password";
-        let hashed_result = password_hash(password, username).unwrap();
+        let user = test_user();
+        let hashed_result = password_hash(user).unwrap();
         assert_eq!(
             hashed_result,
             "$argon2id$v=19$m=19456,t=2,p=1$16f78a7d6317f102bbd95fc9a4f3ff2e3249287690b8bdad6b7810f82b34ace3$lzrW+r2NWIW2MRpY5u2aYgg4kPckPBeILt3RsgpSKR8"
