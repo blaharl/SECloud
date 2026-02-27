@@ -16,11 +16,28 @@ pub fn sha256_hash(input: impl Into<String>) -> Result<String, ErrorMessage> {
     String::from_utf8(format!("{:x}", input_hash).into()).map_err(|_| ErrorMessage::HashingError)
 }
 
-pub fn argon2id_hash(input: &[u8], salt: impl Into<String>) -> Result<String, ErrorMessage> {
+pub fn argon2_params(
+    m: u32,
+    t: u32,
+    p: u32,
+    o: Option<usize>,
+) -> Result<argon2::Params, ErrorMessage> {
+    argon2::Params::new(m, t, p, o).map_err(|_| ErrorMessage::HashingError)
+}
+
+pub fn argon2id_hash(
+    input: &[u8],
+    salt: impl Into<String>,
+    params: Option<argon2::Params>,
+) -> Result<String, ErrorMessage> {
     let argon2id = Argon2::new(
         argon2::Algorithm::Argon2id,
         argon2::Version::V0x13,
-        argon2::Params::new(19456, 2, 1, None).map_err(|_| ErrorMessage::HashingError)?,
+        if let Some(p) = params {
+            p
+        } else {
+            argon2_params(19456, 2, 1, None)?
+        },
     );
 
     let salt = SaltString::from_b64(&salt.into()).map_err(|_| ErrorMessage::HashingError)?;
@@ -29,6 +46,27 @@ pub fn argon2id_hash(input: &[u8], salt: impl Into<String>) -> Result<String, Er
         .hash_password(input, &salt)
         .map_err(|_| ErrorMessage::HashingError)?
         .to_string())
+}
+
+pub fn argon2id_hash_kdf(
+    input: &[u8],
+    salt: impl Into<String>,
+    out: &mut [u8],
+    params: Option<argon2::Params>,
+) -> Result<(), ErrorMessage> {
+    let argon2id = Argon2::new(
+        argon2::Algorithm::Argon2id,
+        argon2::Version::V0x13,
+        if let Some(p) = params {
+            p
+        } else {
+            argon2_params(19456, 2, 1, None)?
+        },
+    );
+
+    argon2id
+        .hash_password_into(input, salt.into().as_bytes(), out)
+        .map_err(|_| ErrorMessage::HashingError)
 }
 
 /// hash password with argon2d (default params)
@@ -42,7 +80,7 @@ pub fn password_hash(user: LoginInfo) -> Result<String, ErrorMessage> {
 
     let salt = sha256_hash(user.username())?;
     let hashed_password =
-        argon2id_hash(password.as_bytes(), salt).map_err(|_| ErrorMessage::HashingError)?;
+        argon2id_hash(password.as_bytes(), salt, None).map_err(|_| ErrorMessage::HashingError)?;
 
     if hashed_password.len() > MAX_PASSWORD_LENGTH {
         return Err(ErrorMessage::ExceededMaxPasswordLength(MAX_PASSWORD_LENGTH));
