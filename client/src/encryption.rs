@@ -33,18 +33,42 @@ pub fn derive_key(user: LoginInfo, kdf: Kdf) -> Result<[u8; 32], ErrorMessage> {
     }
 }
 
+pub fn encrypt(
+    user: LoginInfo,
+    plaintext: &[u8],
+    kdf: Kdf,
+    algorithm: Algorithm,
+) -> Result<(Vec<u8>, Vec<u8>), ErrorMessage> {
+    match algorithm {
+        Algorithm::Aes256 => aes256_encrypt(user, plaintext, kdf, None),
+    }
+}
+
+pub fn decrypt(
+    user: LoginInfo,
+    ciphertext: &[u8],
+    nonce: &[u8],
+    kdf: Kdf,
+    algorithm: Algorithm,
+) -> Result<Vec<u8>, ErrorMessage> {
+    match algorithm {
+        Algorithm::Aes256 => aes256_decrypt(user, ciphertext, nonce, kdf),
+    }
+}
+
 pub fn aes256_encrypt(
     user: LoginInfo,
     plaintext: &[u8],
     kdf: Kdf,
+    nonce: Option<Vec<u8>>,
 ) -> Result<(Vec<u8>, Vec<u8>), ErrorMessage> {
     let key = derive_key(user, kdf)?;
     let key = Key::<Aes256Gcm>::from_slice(&key);
 
     let cipher = Aes256Gcm::new(key);
-    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+    let nonce = nonce.unwrap_or(Aes256Gcm::generate_nonce(&mut OsRng).to_vec());
     let ciphertext = cipher
-        .encrypt(&nonce, plaintext.as_ref())
+        .encrypt((&*nonce).into(), plaintext.as_ref())
         .map_err(|_| ErrorMessage::EncryptionError)?;
 
     Ok((ciphertext, nonce.to_vec()))
@@ -79,7 +103,7 @@ mod tests {
         let plaintext = b"hello world!";
         let kdf = Kdf::Argon2id;
 
-        let (ciphertext, nonce) = aes256_encrypt(user.clone(), plaintext, kdf).unwrap();
+        let (ciphertext, nonce) = aes256_encrypt(user.clone(), plaintext, kdf, None).unwrap();
         let decryptedtext = aes256_decrypt(user, &ciphertext, &nonce, kdf).unwrap();
 
         assert_eq!(plaintext.to_vec(), decryptedtext);
