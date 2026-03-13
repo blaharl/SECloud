@@ -9,6 +9,8 @@ use crate::user::LoginInfo;
 
 const MAX_PASSWORD_LENGTH: usize = 255;
 
+// TODO: fn visibility
+
 pub fn sha256_hash(input: impl Into<String>) -> Result<String, ErrorMessage> {
     let mut hasher = Sha256::new();
     hasher.update(input.into());
@@ -25,7 +27,7 @@ pub fn argon2_params(
     argon2::Params::new(m, t, p, o).map_err(|_| ErrorMessage::HashingError)
 }
 
-pub fn argon2id_hash(
+fn argon2id_hash(
     input: &[u8],
     salt: impl Into<String>,
     params: Option<argon2::Params>,
