@@ -5,18 +5,36 @@ use aes_gcm::{
     Aes256Gcm, Key,
     aead::{Aead, AeadCore, KeyInit, OsRng},
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum Kdf {
     Argon2id,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum Algorithm {
     Aes256,
 }
 
-pub fn derive_key(user: LoginInfo, kdf: Kdf) -> Result<[u8; 32], ErrorMessage> {
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AlgoInfo {
+    algorithm: Algorithm,
+    kdf: Kdf,
+    nonce: Option<Vec<u8>>,
+}
+
+impl AlgoInfo {
+    fn new(algorithm: Option<Algorithm>, kdf: Option<Kdf>, nonce: Option<Vec<u8>>) -> Self {
+        Self {
+            algorithm: algorithm.unwrap_or(Algorithm::Aes256),
+            kdf: kdf.unwrap_or(Kdf::Argon2id),
+            nonce,
+        }
+    }
+}
+
+fn derive_key(user: LoginInfo, kdf: Kdf) -> Result<[u8; 32], ErrorMessage> {
     let salt = hash::sha256_hash(user.username())?;
     match kdf {
         Kdf::Argon2id => {
@@ -33,30 +51,39 @@ pub fn derive_key(user: LoginInfo, kdf: Kdf) -> Result<[u8; 32], ErrorMessage> {
     }
 }
 
+// TODO: default nonce
+
 pub fn encrypt(
     user: LoginInfo,
     plaintext: &[u8],
-    kdf: Kdf,
-    algorithm: Algorithm,
+    algo_info: &AlgoInfo,
 ) -> Result<(Vec<u8>, Vec<u8>), ErrorMessage> {
-    match algorithm {
-        Algorithm::Aes256 => aes256_encrypt(user, plaintext, kdf, None),
+    match algo_info.algorithm {
+        Algorithm::Aes256 => {
+            aes256_encrypt(user, plaintext, algo_info.kdf, algo_info.nonce.clone())
+        }
     }
 }
 
 pub fn decrypt(
     user: LoginInfo,
     ciphertext: &[u8],
-    nonce: &[u8],
-    kdf: Kdf,
-    algorithm: Algorithm,
+    algo_info: &AlgoInfo,
 ) -> Result<Vec<u8>, ErrorMessage> {
-    match algorithm {
-        Algorithm::Aes256 => aes256_decrypt(user, ciphertext, nonce, kdf),
+    match algo_info.algorithm {
+        Algorithm::Aes256 => aes256_decrypt(
+            user,
+            ciphertext,
+            &algo_info
+                .nonce
+                .clone()
+                .ok_or(ErrorMessage::DecryptionError)?,
+            algo_info.kdf,
+        ),
     }
 }
 
-pub fn aes256_encrypt(
+fn aes256_encrypt(
     user: LoginInfo,
     plaintext: &[u8],
     kdf: Kdf,
@@ -74,7 +101,7 @@ pub fn aes256_encrypt(
     Ok((ciphertext, nonce.to_vec()))
 }
 
-pub fn aes256_decrypt(
+fn aes256_decrypt(
     user: LoginInfo,
     ciphertext: &[u8],
     nonce: &[u8],
