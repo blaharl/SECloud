@@ -21,6 +21,7 @@ pub enum ErrorMessage {
     HashingError,
     EncryptionError,
     DecryptionError,
+    IOError,
     ExceededMaxPasswordLength(usize),
     ServerError,
     WrongCredentials,
@@ -51,6 +52,7 @@ impl ErrorMessage {
             ErrorMessage::HashingError => "Error while hashing password".to_string(),
             ErrorMessage::EncryptionError => "Error while encrypting file".to_string(),
             ErrorMessage::DecryptionError => "Error while decrypting file".to_string(),
+            ErrorMessage::IOError => "Input/Output Error".to_string(),
             ErrorMessage::InvalidHashFormat => "Invalid password hash format".to_string(),
             ErrorMessage::UserNameExist => "Username already exists".to_string(),
             ErrorMessage::ExceededMaxPasswordLength(max_length) => {
