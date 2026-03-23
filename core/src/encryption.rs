@@ -77,6 +77,7 @@ pub fn root_nonce(user: &LoginInfo, algorithm: Algorithm) -> Result<Vec<u8>, Err
     }
 }
 
+/// returns Result<(ciphertext, nonce)>
 pub fn encrypt(plaintext: &[u8], algo_info: &AlgoInfo) -> Result<(Vec<u8>, Vec<u8>), ErrorMessage> {
     match algo_info.algorithm {
         Algorithm::Aes256 => {
@@ -98,6 +99,7 @@ pub fn decrypt(ciphertext: &[u8], algo_info: &AlgoInfo) -> Result<Vec<u8>, Error
     }
 }
 
+/// returns Result<(ciphertext, nonce)>
 fn aes256_encrypt(
     plaintext: &[u8],
     derived_key: &[u8],
