@@ -2,7 +2,10 @@
 
 use crate::{encryption::AlgoInfo, error::ErrorMessage};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::{HashMap, VecDeque},
+    path::PathBuf,
+};
 
 #[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
 enum FileType {
@@ -52,14 +55,15 @@ impl Folder {
     }
 
     /// adds metadata of the added file to current folder,
-    /// returns folder info if type of the added file is folder
+    /// pushes new folder info into queue if type of the added file is folder
     fn add_file<T>(
         &mut self,
         name: T,
         hashed_name: T,
         file_type: FileType,
         algo_info: AlgoInfo,
-    ) -> Result<Option<Folder>, ErrorMessage>
+        queue: &mut Queue,
+    ) -> Result<(), ErrorMessage>
     where
         T: Into<String> + Copy,
     {
@@ -81,10 +85,9 @@ impl Folder {
                 new_file_path,
                 Some(self.curr_dir()?.clone()),
             );
-            Ok(Some(new_folder))
-        } else {
-            Ok(None)
+            queue.push(new_folder);
         }
+        Ok(())
     }
 
     fn curr_dir(&self) -> Result<&File, ErrorMessage> {
@@ -102,5 +105,25 @@ impl Folder {
         let folder: Self =
             serde_json::from_slice(&serialized).map_err(|_| ErrorMessage::DecryptionError)?;
         Ok(folder)
+    }
+}
+
+pub struct Queue {
+    folders: VecDeque<Folder>,
+}
+
+impl Queue {
+    pub fn new() -> Self {
+        Queue {
+            folders: VecDeque::new(),
+        }
+    }
+
+    pub fn push(&mut self, folder: Folder) {
+        self.folders.push_back(folder);
+    }
+
+    pub fn pop(&mut self) -> Option<Folder> {
+        self.folders.pop_front()
     }
 }
