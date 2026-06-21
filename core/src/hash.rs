@@ -75,6 +75,7 @@ pub fn argon2id_hash_kdf(
 /// username (sha256) used as salt
 pub fn password_hash(user: LoginInfo) -> Result<String, ErrorMessage> {
     let password = user.password();
+    let password = sha256_hash(password)?;
 
     if password.is_empty() {
         return Err(ErrorMessage::EmptyPassword);
@@ -115,7 +116,7 @@ mod tests {
         let hashed_result = password_hash(user).unwrap();
         assert_eq!(
             hashed_result,
-            "$argon2id$v=19$m=19456,t=2,p=1$16f78a7d6317f102bbd95fc9a4f3ff2e3249287690b8bdad6b7810f82b34ace3$lzrW+r2NWIW2MRpY5u2aYgg4kPckPBeILt3RsgpSKR8"
+            "$argon2id$v=19$m=19456,t=2,p=1$16f78a7d6317f102bbd95fc9a4f3ff2e3249287690b8bdad6b7810f82b34ace3$DAAh7vj+rwTWrHUiJ3NJOlqBJi5BxCWDCLMM2iGQ4yU"
         )
     }
 }

@@ -52,8 +52,7 @@ fn derive_key(user: &LoginInfo, kdf: Kdf) -> Result<Vec<u8>, ErrorMessage> {
                 user.password().as_bytes(),
                 salt,
                 &mut out,
-                // WARN: setting t to 2 makes the derived key identical to the stored password
-                Some(argon2_params(19456, 3, 1, None)?),
+                Some(argon2_params(19456, 2, 1, None)?),
             )?;
             Ok(out)
         }
@@ -70,7 +69,7 @@ pub fn root_nonce(user: &LoginInfo, algorithm: Algorithm) -> Result<Vec<u8>, Err
                 user.password().as_bytes(),
                 salt,
                 &mut out,
-                Some(argon2_params(19456, 4, 1, None)?),
+                Some(argon2_params(19456, 3, 1, None)?),
             )?;
             Ok(out[0..12].to_vec())
         }
@@ -152,8 +151,8 @@ mod tests {
         let plaintext = b"hello world!";
         let algo_info = test_algo();
         let ciphertext = [
-            162, 44, 7, 18, 202, 235, 54, 107, 59, 106, 167, 94, 157, 184, 182, 80, 177, 93, 222,
-            230, 63, 223, 75, 115, 110, 83, 10, 3,
+            204, 19, 85, 245, 39, 32, 146, 101, 125, 71, 200, 214, 199, 74, 176, 23, 82, 243, 114,
+            105, 14, 75, 145, 68, 137, 147, 201, 122,
         ];
 
         let encrypted_text = encrypt(plaintext, &algo_info).unwrap().0;
@@ -165,8 +164,8 @@ mod tests {
         let plaintext = b"hello world!";
         let algo_info = test_algo();
         let ciphertext = [
-            162, 44, 7, 18, 202, 235, 54, 107, 59, 106, 167, 94, 157, 184, 182, 80, 177, 93, 222,
-            230, 63, 223, 75, 115, 110, 83, 10, 3,
+            204, 19, 85, 245, 39, 32, 146, 101, 125, 71, 200, 214, 199, 74, 176, 23, 82, 243, 114,
+            105, 14, 75, 145, 68, 137, 147, 201, 122,
         ];
 
         let decrypted_text = decrypt(&ciphertext, &algo_info).unwrap();
